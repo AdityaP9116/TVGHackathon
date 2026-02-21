@@ -54,7 +54,7 @@ const generateMockData = () => {
 
 export default function GridGuardDashboard() {
   // States
-  const [fileState, setFileState] = useState<{ name: string, size: string } | null>(null);
+  const [fileState, setFileState] = useState<{ name: string, size: string } | null>({ name: "ERCOT_Historical_2021_2024.csv", size: "84.2 MB" });
   const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -92,7 +92,7 @@ export default function GridGuardDashboard() {
         <div className="container mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary drop-shadow-[0_0_8px_rgba(125,207,255,0.8)]" />
-            <span className="font-semibold text-lg tracking-tight">Grid-Guard</span>
+            <span className="font-semibold text-lg tracking-tight">Grid Guard</span>
           </div>
 
           <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-muted-foreground">
@@ -126,11 +126,11 @@ export default function GridGuardDashboard() {
           </Badge>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight max-w-4xl text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60">
-            Predictive Compute Throttling
+            Grid Guard
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl font-light">
-            An automated kill-switch algorithm stabilizing the ERCOT power grid against catastrophic AI Data Center load spikes.
+            Predictive compute throttling and ODE stabilization for the ERCOT power grid against catastrophic AI load spikes.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -476,7 +476,7 @@ export default function GridGuardDashboard() {
       {/* --- FOOTER --- */}
       <footer className="border-t border-white/5 bg-black/20 mt-12 py-8">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
-          <p className="flex items-center gap-2"><Zap className="h-3 w-3" /> Grid-Guard • Energy Hackathon Prototype Concept</p>
+          <p className="flex items-center gap-2"><Zap className="h-3 w-3" /> Grid Guard • Energy Hackathon Prototype Concept</p>
           <div className="flex items-center gap-4">
             <span>Built with Next.js App Router + Vercel</span>
             <a href="https://github.com/AdityaP9116/TVGHackathon" target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-white transition-colors">
