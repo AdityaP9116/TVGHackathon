@@ -29,7 +29,16 @@ if 'is_trained' not in st.session_state:
 st.sidebar.header("⚙️ Simulation Settings")
 
 max_capacity = st.sidebar.slider("MAX_SAFE_CAPACITY (MW)", min_value=3500, max_value=5000, value=4000, step=50)
-ai_spike = st.sidebar.slider("AI_DATA_CENTER_SPIKE (MW)", min_value=100, max_value=1000, value=600, step=50)
+
+st.sidebar.header("🔌 AI Data Center Calculator")
+gpu_type = st.sidebar.selectbox("GPU Architecture", ["NVIDIA H100", "NVIDIA A100", "NVIDIA B200"])
+gpu_power_map = {"NVIDIA A100": 400, "NVIDIA H100": 700, "NVIDIA B200": 1000}
+num_gpus = st.sidebar.number_input("Number of GPUs", min_value=1000, max_value=500000, value=100000, step=10000)
+pue = st.sidebar.slider("Facility PUE (Cooling Overhead)", min_value=1.0, max_value=2.0, value=1.2, step=0.05)
+
+# Calculate AI Spike in MW
+ai_spike = (num_gpus * gpu_power_map[gpu_type] * pue) / 1_000_000
+st.sidebar.info(f"**Predicted AI Load:** {ai_spike:.2f} MW")
 
 st.sidebar.header("🌡️ Mock Extreme Weather")
 mock_tmax = st.sidebar.number_input("Max Temp (TMAX)", value=105.0)
@@ -96,56 +105,69 @@ if st.session_state.is_trained:
         is_throttled, math_curve = check_grid_state(baseline_load, ai_spike, max_capacity)
         
         # 3. Dynamic Plotting Loop
-        # We will iterate through the simulation arrays to mimic live incoming data
-        
         live_time = []
-        live_load = []
+        live_supply = []
+        live_demand = []
         
         # ANIMATE: Pre-Spike
         for i in range(len(t_pre)):
             live_time.append(t_pre[i])
-            live_load.append(load_pre[i])
+            live_supply.append(load_pre[i])
+            live_demand.append(load_pre[i])
             
             total_metric.metric("Current Total Load", f"{load_pre[i]:.2f} MW")
             
-            df = pd.DataFrame({"Time": live_time, "Total Load (MW)": live_load}).set_index("Time")
-            chart_placeholder.line_chart(df)
-            time.sleep(0.1)
+            df = pd.DataFrame({"Time": live_time, "Grid Supply (MW)": live_supply, "Attempted Demand (MW)": live_demand}).set_index("Time")
+            chart_placeholder.line_chart(df, color=["#1f77b4", "#ff7f0e"])
+            time.sleep(0.05)
             
         # ANIMATE: SPIKE HITS
         total_peak = baseline_load + ai_spike
         live_time.append(0)
-        live_load.append(total_peak)
+        live_supply.append(total_peak)
+        live_demand.append(total_peak)
         
-        total_metric.metric("Current Total Load", f"{total_peak:.2f} MW", delta=f"+{ai_spike} MW", delta_color="inverse")
-        df = pd.DataFrame({"Time": live_time, "Total Load (MW)": live_load}).set_index("Time")
-        chart_placeholder.line_chart(df)
-        time.sleep(0.5) # Pause for dramatic effect when limits are breached
+        total_metric.metric("Current Total Load", f"{total_peak:.2f} MW", delta=f"+{ai_spike:.2f} MW", delta_color="inverse")
+        df = pd.DataFrame({"Time": live_time, "Grid Supply (MW)": live_supply, "Attempted Demand (MW)": live_demand}).set_index("Time")
+        chart_placeholder.line_chart(df, color=["#1f77b4", "#ff7f0e"])
+        time.sleep(0.5) # Pause for dramatic effect
         
         # ANIMATE: Post-Spike / Recovery
         if is_throttled:
             status_placeholder.error("🔴 AI Cluster: THROTTLED (Grid Stabilizing)")
             t_post = np.linspace(0.1, 10, len(math_curve))
+            outage_minutes = 0
             
             for i in range(len(t_post)):
                 live_time.append(t_post[i])
-                live_load.append(math_curve[i])
+                live_supply.append(math_curve[i])
+                live_demand.append(total_peak) # Demand remains high but supply is throttled
+                
+                if total_peak > math_curve[i]:
+                    outage_minutes += 1
                 
                 total_metric.metric("Current Total Load", f"{math_curve[i]:.2f} MW")
-                df = pd.DataFrame({"Time": live_time, "Total Load (MW)": live_load}).set_index("Time")
-                chart_placeholder.line_chart(df)
+                df = pd.DataFrame({"Time": live_time, "Grid Supply (MW)": live_supply, "Attempted Demand (MW)": live_demand}).set_index("Time")
+                chart_placeholder.line_chart(df, color=["#1f77b4", "#ff7f0e"])
                 time.sleep(0.05)
                 
-            status_placeholder.success("🟢 Grid Stabilized. AI Cluster: RESUMING SECURE COMPUTE")
+            status_placeholder.success(f"🟢 Grid Stabilized. AI Cluster: RESUMING SECURE COMPUTE. (Outage Prevented: {outage_minutes} units)")
+            
+            # Export CSV functionality similar to Arjun's
+            final_df = pd.DataFrame({"Time": live_time, "Grid_Supply_MW": live_supply, "Attempted_Demand_MW": live_demand})
+            csv = final_df.to_csv(index=False).encode('utf-8')
+            st.download_button("📥 Download Simulation Data", csv, "power_simulation_data.csv", "text/csv")
+            
         else:
             # Flatline at the new safe capacity
             t_post = np.linspace(0.1, 10, len(math_curve))
             for i in range(len(t_post)):
                 live_time.append(t_post[i])
-                live_load.append(math_curve[i])
+                live_supply.append(math_curve[i])
+                live_demand.append(math_curve[i])
                 
                 total_metric.metric("Current Total Load", f"{math_curve[i]:.2f} MW")
-                df = pd.DataFrame({"Time": live_time, "Total Load (MW)": live_load}).set_index("Time")
-                chart_placeholder.line_chart(df)
+                df = pd.DataFrame({"Time": live_time, "Grid Supply (MW)": live_supply, "Attempted Demand (MW)": live_demand}).set_index("Time")
+                chart_placeholder.line_chart(df, color=["#1f77b4", "#1f77b4"])
                 time.sleep(0.05)
 
