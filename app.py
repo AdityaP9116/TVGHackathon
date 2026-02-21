@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 from data_pipeline import load_and_clean_data
-from model_brain import train_arima_model, predict_baseline
+from model_brain import train_arima_model, predict_baseline, predict_ai_pue
 from simulation import check_grid_state
 
 # ==========================================
@@ -34,16 +34,19 @@ st.sidebar.header("🔌 AI Data Center Calculator")
 gpu_type = st.sidebar.selectbox("GPU Architecture", ["NVIDIA H100", "NVIDIA A100", "NVIDIA B200"])
 gpu_power_map = {"NVIDIA A100": 400, "NVIDIA H100": 700, "NVIDIA B200": 1000}
 num_gpus = st.sidebar.number_input("Number of GPUs", min_value=1000, max_value=500000, value=100000, step=10000)
-pue = st.sidebar.slider("Facility PUE (Cooling Overhead)", min_value=1.0, max_value=2.0, value=1.2, step=0.05)
-
-# Calculate AI Spike in MW
-ai_spike = (num_gpus * gpu_power_map[gpu_type] * pue) / 1_000_000
-st.sidebar.info(f"**Predicted AI Load:** {ai_spike:.2f} MW")
 
 st.sidebar.header("🌡️ Mock Extreme Weather")
 mock_tmax = st.sidebar.number_input("Max Temp (TMAX)", value=105.0)
 mock_tmin = st.sidebar.number_input("Min Temp (TMIN)", value=80.0)
 mock_wind = st.sidebar.number_input("Wind Speed", value=5.0)
+
+# Calculate dynamic PUE based on TMAX prediction
+predicted_pue = predict_ai_pue(mock_tmax)
+st.sidebar.metric("Predicted Facility PUE", f"{predicted_pue:.2f}")
+
+# Calculate AI Spike in MW
+ai_spike = (num_gpus * gpu_power_map[gpu_type] * predicted_pue) / 1_000_000
+st.sidebar.info(f"**Predicted AI Load:** {ai_spike:.2f} MW")
 
 # ==========================================
 # MODEL TRAINING BUTTON
