@@ -39,11 +39,18 @@ mock_wind = st.sidebar.number_input("Wind Speed", value=5.0)
 # ==========================================
 # MODEL TRAINING BUTTON
 # ==========================================
+
+@st.cache_resource(show_spinner=False)
+def initialize_brain():
+    # Caches the trained model so page reloads don't require retraining
+    X, X_exog, y_load = load_and_clean_data(".")
+    model = train_arima_model(X_exog, y_load)
+    return model, X_exog
+
 if not st.session_state.is_trained:
     if st.button("Train Predictive Brain (ARIMA)"):
         with st.spinner("Loading data and training lightweight ARIMA model... (This takes a few seconds)"):
-            X, X_exog, y_load = load_and_clean_data(r"c:\Users\Adity\Downloads\TVG Hackathon\TVGHackathon")
-            model = train_arima_model(X_exog, y_load)
+            model, X_exog = initialize_brain()
             
             st.session_state.model = model
             st.session_state.X_exog = X_exog

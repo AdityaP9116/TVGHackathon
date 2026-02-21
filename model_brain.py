@@ -42,7 +42,7 @@ def predict_baseline(model, mock_weather_dict, X_exog):
 
 if __name__ == "__main__":
     # Test script locally
-    X, X_exog, y_load = load_and_clean_data(r"c:\Users\Adity\Downloads\TVG Hackathon\TVGHackathon")
+    X, X_exog, y_load = load_and_clean_data(".")
     
     # Train
     model = train_arima_model(X_exog, y_load)

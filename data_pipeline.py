@@ -2,18 +2,33 @@ import pandas as pd
 import numpy as np
 import os
 
+def load_data_file(base_path, *path_parts):
+    # Try .xlsx first, then .csv
+    base_file = os.path.join(base_path, *path_parts)
+    name, ext = os.path.splitext(base_file)
+    
+    # Check .xlsx
+    xlsx_path = name + ".xlsx"
+    if os.path.exists(xlsx_path):
+        return pd.read_excel(xlsx_path)
+    
+    # Check .csv
+    csv_path = name + ".csv"
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path)
+        
+    raise FileNotFoundError(f"Could not find data file at {xlsx_path} or {csv_path}")
+
 def load_and_clean_data(base_path="."):
     """
-    Ingests and cleans Grid Load, Weather, and Outage CSVs (actually Excel files in the data folder).
+    Ingests and cleans Grid Load, Weather, and Outage CSVs (or Excel files in the data folder).
     Returns the feature matrix (X) and target variable (y_load) ready for ARIMA modeling.
     """
-    print("Loading raw data from Excel files...")
+    print("Loading raw data from Excel/CSV files...")
     # 1. Load and clean grid load data
-    load_xlsx_path = os.path.join(base_path, 'data', 'Yearly Load Archives', '20-24_Load_Data.xlsx')
-    weather_xlsx_path = os.path.join(base_path, 'data', 'Austin Weather Data', '2020 (1_1) - 2024 (5_29).xlsx')
-    outage_xlsx_path = os.path.join(base_path, 'data', 'OutageDates.xlsx')
-
-    load_data = pd.read_excel(load_xlsx_path)
+    load_data = load_data_file(base_path, 'data', 'Yearly Load Archives', '20-24_Load_Data')
+    weather_data = load_data_file(base_path, 'data', 'Austin Weather Data', '2020 (1_1) - 2024 (5_29)')
+    outage_data = load_data_file(base_path, 'data', 'OutageDates')
     # The exact column name might be 'hour_data' based on the notebook, but 
     # if it throws an error in testing, we might need to inspect the raw excel.
     # We will assume it matches the notebook structure for now.
@@ -32,12 +47,10 @@ def load_and_clean_data(base_path="."):
     load_data_daily = load_data.resample('D').mean()
 
     # 2. Load and clean weather data
-    weather_data = pd.read_excel(weather_xlsx_path)
     weather_data['DATE'] = pd.to_datetime(weather_data['DATE'])
     weather_data = weather_data.set_index('DATE').resample('D').ffill()
 
     # 3. Load and clean outage data
-    outage_data = pd.read_excel(outage_xlsx_path)
     outage_data['Date'] = pd.to_datetime(outage_data['Date'])
     outage_data = outage_data.set_index('Date').resample('D').ffill()
 
@@ -72,7 +85,7 @@ def load_and_clean_data(base_path="."):
     return X, X_exog, y_load
 
 if __name__ == "__main__":
-    X, X_exog, y = load_and_clean_data(r"c:\Users\Adity\Downloads\TVG Hackathon\TVGHackathon")
+    X, X_exog, y = load_and_clean_data(".")
     print("Features shape:", X.shape)
     print("Exogenous feature shape:", X_exog.shape)
     print("Target shape:", y.shape)
