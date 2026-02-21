@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.2 0.02 260);     /* Very dark navy */
+  --foreground: oklch(0.85 0.05 260);    /* Light silvery blue text */
+  --card: oklch(0.24 0.02 260);          /* Lighter navy panel */
+  --card-foreground: oklch(0.85 0.05 260);
+  --popover: oklch(0.24 0.02 260);
+  --popover-foreground: oklch(0.85 0.05 260);
+  --primary: oklch(0.7 0.15 250);        /* Neon Cyan/Blue */
+  --primary-foreground: oklch(0.1 0.0 260);
+  --secondary: oklch(0.3 0.05 260);
+  --secondary-foreground: oklch(0.85 0.05 260);
+  --muted: oklch(0.3 0.05 260);
+  --muted-foreground: oklch(0.6 0.05 260);
+  --accent: oklch(0.6 0.2 300);          /* Neon Purple Accent */
+  --accent-foreground: oklch(0.95 0.05 300);
+  --destructive: oklch(0.577 0.245 27.325); /* Subtle neon red/orange */
+  --destructive-foreground: oklch(0.95 0.05 30);
+  --border: oklch(0.35 0.05 260 / 0.3);  /* Low opacity border */
+  --input: oklch(0.35 0.05 260 / 0.5);
+  --ring: oklch(0.7 0.15 250);           /* Matches primary */
+  --radius: 0.5rem;
+}
+
+/* Base styles for dark theme look */
+body {
+  color: var(--foreground);
+  background: var(--background);
+  background-image: radial-gradient(circle at 80% -20%, rgba(130, 80, 255, 0.15), transparent 40%),
+                    radial-gradient(circle at 0% 100%, rgba(40, 180, 255, 0.05), transparent 30%);
+  background-attachment: fixed;
+  font-family: inherit;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
