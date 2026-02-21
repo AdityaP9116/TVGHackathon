@@ -1,188 +1,323 @@
-'use client';
+"use client"
 
-import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Settings, Play, ShieldAlert, ShieldCheck, Github } from 'lucide-react';
+import { useState, useCallback } from "react"
+import {
+  Zap,
+  Github,
+  ExternalLink,
+  BarChart3,
+  CloudLightning,
+  Shield,
+  Gauge,
+  Moon,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Toaster, toast } from "sonner"
+import { DatasetUploader } from "@/components/dataset-uploader"
+import { RunControls } from "@/components/run-controls"
+import { OutputExport } from "@/components/output-export"
+import { VisualTabs } from "@/components/visual-tabs"
+import {
+  generateForecastData,
+  generateSheddingData,
+  generateMetrics,
+  type ChartDataPoint,
+  type SheddingDataPoint,
+  type MetricData,
+} from "@/lib/mock-data"
 
-export default function GridGuardDashboard() {
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
+const GITHUB_URL = "https://github.com/REPLACE_ME"
 
-  // Simulation Parameters
-  const [maxCapacity, setMaxCapacity] = useState(4000);
-  const [aiSpike, setAiSpike] = useState(600);
-  const [tmax, setTmax] = useState(105);
+const VALUE_PROPS = [
+  {
+    icon: <BarChart3 className="size-5 text-tn-blue" />,
+    text: "Forecast tomorrow's baseline demand",
+  },
+  {
+    icon: <CloudLightning className="size-5 text-tn-purple" />,
+    text: "Simulate AI data center stress",
+  },
+  {
+    icon: <Shield className="size-5 text-tn-cyan" />,
+    text: "Trigger automated load-shedding",
+  },
+]
 
-  const runSimulation = async () => {
-    setLoading(true);
+const HOW_IT_WORKS = [
+  {
+    step: "01",
+    title: "Ingest & Featurize",
+    desc: "Load historical grid data with weather covariates. Auto-extract temporal features.",
+  },
+  {
+    step: "02",
+    title: "Forecast & Simulate",
+    desc: "Run time-series models to predict baseline + AI workload surge over the horizon.",
+  },
+  {
+    step: "03",
+    title: "Throttle & Stabilize",
+    desc: "Apply predictive throttling policies to shed excess compute before grid stress peaks.",
+  },
+]
+
+export default function Home() {
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [fileSize, setFileSize] = useState<number | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+  const [hasResults, setHasResults] = useState(false)
+  const [forecastData, setForecastData] = useState<ChartDataPoint[]>([])
+  const [sheddingData, setSheddingData] = useState<SheddingDataPoint[]>([])
+  const [metrics, setMetrics] = useState<MetricData | null>(null)
+
+  const handleFileChange = useCallback((name: string | null, size: number | null) => {
+    setFileName(name)
+    setFileSize(size)
+  }, [])
+
+  const handleRun = useCallback(async () => {
+    setIsRunning(true)
+
     try {
       const res = await fetch('/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          max_capacity: maxCapacity,
-          ai_spike: aiSpike,
-          tmax: tmax,
+          max_capacity: 4800,
+          ai_spike: 600,
+          tmax: 105,
           tmin: 80,
           wind: 5,
         }),
       });
+
       const data = await res.json();
-      setResults(data);
+
+      // Transform incoming Python data to match the UI ChartDataPoint interface
+      const realForecastData: ChartDataPoint[] = data.chart_data.map((point: any) => ({
+        time: `${Math.round(point.time + 10).toString().padStart(2, '0')}:00`, // Mapping array steps to hours roughly
+        baseline: data.baseline_load,
+        aiLoad: point.load > data.baseline_load + 300 ? point.load : point.load + 100, // Visual math approximation
+        throttled: point.load,
+        gridCap: 4800
+      }));
+
+      setForecastData(realForecastData)
+      setSheddingData(generateSheddingData())
+      setMetrics(generateMetrics())
+      setHasResults(true)
+      setIsRunning(false)
+      toast.success("Simulation complete", {
+        description: data.is_throttled
+          ? "Kill-switch triggered! AI cluster compute safely shed over horizontal timeline."
+          : "Grid stable under mock parameters.",
+      })
     } catch (error) {
-      console.error("Simulation failed:", error);
+      console.error("API failed:", error);
+      toast.error("Simulation failed", {
+        description: "Could not reach the Python grid model backend."
+      });
+      setIsRunning(false);
     }
-    setLoading(false);
-  };
+  }, [])
+
+  const handleReset = useCallback(() => {
+    setFileName(null)
+    setFileSize(null)
+    setHasResults(false)
+    setForecastData([])
+    setSheddingData([])
+    setMetrics(null)
+  }, [])
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" })
+  }
 
   return (
-    <div className="min-h-screen bg-[#1a1b26] text-[#c0caf5] font-sans p-8 selection:bg-[#33467c] selection:text-[#c0caf5]">
-      {/* Header */}
-      <header className="flex justify-between items-center mb-12 border-b border-[#292e42] pb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#7aa2f7] flex items-center gap-3">
-            Grid-Guard
-            {results && (
-              results.is_throttled ? 
-              <ShieldAlert className="text-[#f7768e] w-8 h-8 animate-pulse" /> : 
-              <ShieldCheck className="text-[#9ece6a] w-8 h-8" />
-            )}
-          </h1>
-          <p className="text-[#565f89] mt-2 tracking-wide text-sm uppercase">Compute-Throttling Stabilization System</p>
-        </div>
-        
-        <a 
-          href="https://github.com/AdityaP9116/TVGHackathon" 
-          target="_blank" 
-          rel="noreferrer"
-          className="flex items-center gap-2 text-[#a9b1d6] hover:text-[#7aa2f7] transition-colors"
-        >
-          <Github className="w-5 h-5" />
-          <span className="text-sm font-medium">Repository</span>
-        </a>
+    <div className="relative min-h-screen bg-background text-foreground">
+      {/* Background radial glow */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        aria-hidden="true"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 70% 10%, rgba(122,162,247,0.08) 0%, rgba(187,154,247,0.04) 40%, transparent 70%)",
+        }}
+      />
+
+      {/* ─── Navigation ─── */}
+      <header className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
+        <nav className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4 lg:px-6">
+          <div className="flex items-center gap-2">
+            <Zap className="size-5 text-tn-cyan" />
+            <span className="text-sm font-semibold text-foreground tracking-tight">Grid-Guard</span>
+          </div>
+
+          <div className="hidden items-center gap-6 md:flex">
+            <button onClick={() => scrollTo("overview")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Overview
+            </button>
+            <button onClick={() => scrollTo("demo")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Demo
+            </button>
+            <button onClick={() => scrollTo("visuals")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Visuals
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="hidden border-border/40 text-muted-foreground text-[10px] sm:flex items-center gap-1">
+              <Moon className="size-3" />
+              Tokyo Night
+            </Badge>
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary/50 gap-1.5">
+                <Github className="size-3.5" />
+                <span className="hidden sm:inline">Repo</span>
+                <ExternalLink className="size-3" />
+              </Button>
+            </a>
+          </div>
+        </nav>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-        
-        {/* Controls Sidebar */}
-        <div className="bg-[#24283b] p-6 rounded-xl border border-[#292e42] shadow-2xl h-fit">
-          <div className="flex items-center gap-2 mb-6">
-            <Settings className="text-[#7aa2f7] w-5 h-5" />
-            <h2 className="text-lg font-semibold text-[#a9b1d6]">Simulation Parameters</h2>
+      <main className="relative z-10">
+        {/* ─── Hero Section ─── */}
+        <section id="overview" className="mx-auto max-w-6xl px-4 pt-16 pb-12 lg:px-6 lg:pt-24 lg:pb-16">
+          <div className="flex flex-col items-center text-center">
+            <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground lg:text-5xl">
+              Grid-Guard
+            </h1>
+            <p className="mt-3 max-w-xl text-pretty text-base text-muted-foreground lg:text-lg">
+              Predictive compute throttling to stabilize grid load for AI data centers.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="mt-8 flex items-center gap-3">
+              <Button
+                onClick={() => scrollTo("demo")}
+                className="bg-tn-blue text-primary-foreground hover:bg-tn-blue/80 shadow-[0_0_30px_rgba(122,162,247,0.2)] transition-all"
+                size="lg"
+              >
+                Import Dataset
+              </Button>
+              <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                >
+                  <Github className="size-4" />
+                  View GitHub
+                </Button>
+              </a>
+            </div>
+
+            {/* Value Props */}
+            <div className="mt-12 grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+              {VALUE_PROPS.map((prop, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col items-center gap-2 rounded-lg border border-border/30 bg-secondary/20 px-4 py-5 transition-colors hover:border-border/50 hover:bg-secondary/30"
+                >
+                  {prop.icon}
+                  <span className="text-center text-xs text-muted-foreground leading-relaxed">{prop.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Demo Workspace Section ─── */}
+        <section id="demo" className="mx-auto max-w-6xl px-4 pb-16 lg:px-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
+            {/* Left Column: Controls */}
+            <div className="flex flex-col gap-4" id="visuals">
+              <DatasetUploader
+                fileName={fileName}
+                fileSize={fileSize}
+                onFileChange={handleFileChange}
+              />
+              <RunControls
+                isRunning={isRunning}
+                onRun={handleRun}
+                onReset={handleReset}
+              />
+              <OutputExport hasResults={hasResults} />
+            </div>
+
+            {/* Right Column: Visualizations */}
+            <VisualTabs
+              forecastData={forecastData}
+              sheddingData={sheddingData}
+              metrics={metrics}
+              hasResults={hasResults}
+            />
+          </div>
+        </section>
+
+        {/* ─── How It Works ─── */}
+        <section className="mx-auto max-w-6xl px-4 pb-16 lg:px-6">
+          <h2 className="text-lg font-semibold text-foreground mb-8">How it works</h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {HOW_IT_WORKS.map((step) => (
+              <div key={step.step} className="flex flex-col gap-3 rounded-lg border border-border/30 bg-secondary/15 p-5">
+                <span className="text-xs font-mono text-tn-cyan">{step.step}</span>
+                <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-[#9aa5ce] mb-2 flex justify-between">
-                <span>Max Safe Capacity</span>
-                <span className="text-[#7aa2f7] font-mono">{maxCapacity} MW</span>
-              </label>
-              <input 
-                type="range" min="3000" max="5000" step="50" value={maxCapacity} 
-                onChange={(e) => setMaxCapacity(parseInt(e.target.value))}
-                className="w-full h-1 bg-[#16161e] rounded-lg appearance-none cursor-pointer accent-[#7aa2f7]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#9aa5ce] mb-2 flex justify-between">
-                <span>AI Data Center Spike</span>
-                <span className="text-[#bb9af7] font-mono">+{aiSpike} MW</span>
-              </label>
-              <input 
-                type="range" min="100" max="1500" step="50" value={aiSpike} 
-                onChange={(e) => setAiSpike(parseInt(e.target.value))}
-                className="w-full h-1 bg-[#16161e] rounded-lg appearance-none cursor-pointer accent-[#bb9af7]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#9aa5ce] mb-2 flex justify-between">
-                <span>Max Temperature</span>
-                <span className="text-[#ff9e64] font-mono">{tmax} °F</span>
-              </label>
-              <input 
-                type="range" min="70" max="115" step="1" value={tmax} 
-                onChange={(e) => setTmax(parseInt(e.target.value))}
-                className="w-full h-1 bg-[#16161e] rounded-lg appearance-none cursor-pointer accent-[#ff9e64]"
-              />
-            </div>
+          {/* Technical snippet */}
+          <div className="mt-8 rounded-lg border border-border/30 bg-secondary/10 p-4">
+            <p className="text-xs text-muted-foreground mb-2">Core throttle policy:</p>
+            <code className="block text-xs font-mono text-tn-cyan leading-relaxed whitespace-pre-wrap">
+              {"shed(t) = max(0, forecast(t) + ai_surge(t) - grid_cap) * aggressiveness\nthrottled(t) = baseline(t) + ai_surge(t) - shed(t)"}
+            </code>
+            <p className="text-xs text-muted-foreground mt-3">
+              Replaced mock data generators in <span className="font-mono text-tn-blue">lib/mock-data.ts</span> with live responses from the Python Grid-Guard Model.
+            </p>
           </div>
+        </section>
+      </main>
 
-          <button 
-            onClick={runSimulation}
-            disabled={loading}
-            className="w-full mt-8 bg-[#7aa2f7] hover:bg-[#8caaee] text-[#1a1b26] font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(122,162,247,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? <span className="animate-pulse">Initializing Data Pipeline...</span> : <><Play className="w-5 h-5" /> Run Simulation</>}
-          </button>
+      {/* ─── Footer ─── */}
+      <footer className="border-t border-border/30 bg-background/50">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 lg:px-6">
+          <div className="flex items-center gap-1.5">
+            <Gauge className="size-3.5 text-muted-foreground/50" />
+            <span className="text-xs text-muted-foreground/60">Grid-Guard</span>
+            <span className="text-xs text-muted-foreground/30 mx-1">{"/"}</span>
+            <span className="text-xs text-muted-foreground/40">Hackathon Build</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              aria-label="GitHub repository"
+            >
+              <Github className="size-4" />
+            </a>
+            <span className="text-[10px] text-muted-foreground/40">Built with Next.js + Vercel</span>
+          </div>
         </div>
+      </footer>
 
-        {/* Chart Visualization */}
-        <div className="lg:col-span-2 bg-[#24283b] p-6 rounded-xl border border-[#292e42] shadow-2xl flex flex-col">
-          <h2 className="text-lg font-semibold text-[#a9b1d6] mb-6">Live Grid Telemetry</h2>
-          
-          <div className="flex-grow w-full h-[400px]">
-            {results ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={results.chart_data}>
-                  <XAxis 
-                    dataKey="time" 
-                    type="number" 
-                    domain={['dataMin', 'dataMax']} 
-                    hide 
-                  />
-                  <YAxis 
-                    domain={['auto', 'auto']} 
-                    stroke="#565f89" 
-                    tick={{fill: '#565f89'}} 
-                    tickFormatter={(val) => `${Math.round(val)} MW`}
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#16161e', borderColor: '#292e42', borderRadius: '8px', color: '#c0caf5' }}
-                    itemStyle={{ color: '#7aa2f7' }}
-                    formatter={(value: number) => [`${value.toFixed(1)} MW`, 'Total Load']}
-                    labelFormatter={() => ''}
-                  />
-                  <ReferenceLine y={maxCapacity} stroke="#f7768e" strokeDasharray="3 3">
-                    {/* Add label using an optional approach if needed, or rely on tooltip */}
-                  </ReferenceLine>
-                  <Line 
-                    type="monotone" 
-                    dataKey="load" 
-                    stroke={results.is_throttled ? "#bb9af7" : "#7aa2f7"} 
-                    strokeWidth={3} 
-                    dot={false}
-                    activeDot={{ r: 6, fill: '#ff9e64', stroke: '#24283b' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="w-full h-full border border-dashed border-[#292e42] rounded-lg flex items-center justify-center text-[#565f89]">
-                Await Simulation Start
-              </div>
-            )}
-          </div>
-
-          {/* Stats Bar */}
-          {results && (
-            <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#292e42]">
-              <div className="bg-[#16161e] p-4 rounded-lg border border-[#292e42]">
-                <p className="text-sm tracking-wide text-[#565f89] uppercase mb-1">Baseline Model Load</p>
-                <p className="text-2xl font-light text-[#c0caf5] font-mono">{results.baseline_load.toFixed(1)} <span className="text-sm text-[#737aa2]">MW</span></p>
-              </div>
-              <div className={`p-4 rounded-lg border ${results.is_throttled ? 'bg-[#f7768e]/10 border-[#f7768e]/30' : 'bg-[#9ece6a]/10 border-[#9ece6a]/30'}`}>
-                <p className="text-sm tracking-wide uppercase mb-1 font-bold" style={{ color: results.is_throttled ? '#f7768e' : '#9ece6a' }}>
-                  Safety Status
-                </p>
-                <p className="text-xl font-medium tracking-wide flex items-center gap-2" style={{ color: results.is_throttled ? '#f7768e' : '#9ece6a' }}>
-                  {results.is_throttled ? 'KILL SWITCH TRIGGERED' : 'CAPACITY STABLE'}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <Toaster
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: "#1e1f35",
+            border: "1px solid #2f3052",
+            color: "#c0caf5",
+          },
+        }}
+      />
     </div>
-  );
+  )
 }

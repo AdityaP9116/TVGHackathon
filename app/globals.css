@@ -1,8 +1,109 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
-body {
-  background-color: #1a1b26;
-  color: #c0caf5;
+@custom-variant dark (&:is(.dark *));
+
+/* Tokyo Night Theme - dark only */
+:root {
+  --background: #1a1b2e;
+  --foreground: #c0caf5;
+  --card: #1e1f35;
+  --card-foreground: #c0caf5;
+  --popover: #1e1f35;
+  --popover-foreground: #c0caf5;
+  --primary: #7aa2f7;
+  --primary-foreground: #1a1b2e;
+  --secondary: #24253d;
+  --secondary-foreground: #a9b1d6;
+  --muted: #24253d;
+  --muted-foreground: #565f89;
+  --accent: #2ac3de;
+  --accent-foreground: #1a1b2e;
+  --destructive: #f7768e;
+  --destructive-foreground: #1a1b2e;
+  --border: #2f3052;
+  --input: #2f3052;
+  --ring: #7aa2f7;
+  --chart-1: #7aa2f7;
+  --chart-2: #bb9af7;
+  --chart-3: #2ac3de;
+  --chart-4: #9ece6a;
+  --chart-5: #e0af68;
+  --radius: 0.625rem;
+  --sidebar: #16172b;
+  --sidebar-foreground: #c0caf5;
+  --sidebar-primary: #7aa2f7;
+  --sidebar-primary-foreground: #1a1b2e;
+  --sidebar-accent: #24253d;
+  --sidebar-accent-foreground: #c0caf5;
+  --sidebar-border: #2f3052;
+  --sidebar-ring: #7aa2f7;
+
+  /* Custom tokens for Tokyo Night */
+  --tn-cyan: #2ac3de;
+  --tn-blue: #7aa2f7;
+  --tn-purple: #bb9af7;
+  --tn-green: #9ece6a;
+  --tn-orange: #e0af68;
+  --tn-red: #f7768e;
+  --tn-surface: #1e1f35;
+  --tn-surface-bright: #292a42;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-tn-cyan: var(--tn-cyan);
+  --color-tn-blue: var(--tn-blue);
+  --color-tn-purple: var(--tn-purple);
+  --color-tn-green: var(--tn-green);
+  --color-tn-orange: var(--tn-orange);
+  --color-tn-red: var(--tn-red);
+  --color-tn-surface: var(--tn-surface);
+  --color-tn-surface-bright: var(--tn-surface-bright);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
